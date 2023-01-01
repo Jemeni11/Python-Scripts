@@ -57,7 +57,7 @@ class Journal:
 		TODAY_FILE_NAME = DATETIME_INSTANCE.strftime('%-d.%-m')
 		NEW_DATE_FILE_NAME = NEW_DATE.strftime('%-d.%-m')
 
-		return f"Week {WEEK_NUMBER} of Year {YEAR} ({TODAY_FILE_NAME} - {NEW_DATE_FILE_NAME}).docx"
+		return f"Week {WEEK_NUMBER} of the Year {YEAR} ({TODAY_FILE_NAME} - {NEW_DATE_FILE_NAME}).docx"
 
 	@staticmethod
 	def create_file(FILENAME: str, DATETIME_INSTANCE: datetime) -> None:
