@@ -36,15 +36,19 @@ class MediaMinerScraper:
 	def get_story_metadata(self) -> typing.Dict[str, str]:
 		rating = self.main_article.find("div", {"id": "post-rating"}).get_text(strip=True)
 		summary = self.main_article.find("div", {"class": "post-meta clearfix"}).find_all("br")[0].next_sibling.strip()
-		list_of_stats_in_html = self.main_article.find("div", {"class": "post-meta clearfix"}).contents[9:]
-		updated_list_of_stats_in_html = []
-		for i in list_of_stats_in_html:
-			if str(i).strip() == "|":
-				updated_list_of_stats_in_html.append("\n")
+		list_of_stats = self.main_article.find("div", {"class": "post-meta clearfix"}).contents[9:]
+		list_of_stats_in_html = []
+		for i in list_of_stats:
+			if '<a href="/fanfic/' in str(i):
+				list_of_stats_in_html.append(str(i).replace('<a href="/fanfic/', f'<a href="{self.SITEDOMAIN}/fanfic/'))
+			elif "|" in str(i).strip():
+				list_of_stats_in_html.append(str(i).replace("|", "<br/>"))
 			else:
-				updated_list_of_stats_in_html.append(str(i).strip())
+				list_of_stats_in_html.append(str(i))
+		if str(list_of_stats_in_html[0]) in ["<br/>", "\n"]:
+			del list_of_stats_in_html[0]
 		return {"rating": rating, "summary": summary,
-				"stats_in_html": f"<p>{''.join(updated_list_of_stats_in_html)}</p>"}
+				"stats_in_html": f"<p>{''.join(list_of_stats_in_html)}</p>"}
 
 	def make_intro_chapter(self) -> None:
 		# intro chapter
@@ -56,7 +60,8 @@ class MediaMinerScraper:
 				<h1>{self.get_story_title()}</h1>
 				<h2>By {self.python_dict_to_HTML_anchor_tag(self.get_story_author())}</h2>
 				<div>
-					<h3>Rating: {stats["rating"]}</h3>
+					<h3>Rating:</h3>
+					<p style='font-weight: normal;'>{stats["rating"]}</p>
 					<h3>Summary:</h3>
 					<p>{stats["summary"]}</p>
 					<h3>Stats:</h3>
@@ -96,10 +101,16 @@ class MediaMinerScraper:
 				</div>
 				"""
 			chapter_text = chapter_main_article.find("div", {"id": "fanfic-text"})
-			chapter_text_string = str(chapter_text).replace('style=" padding: 0.00mm 0.00mm 0.00mm 0.00mm;"',
-															'style=" line-height: 1.5; margin: 8px 0; padding: 4px 0;"')
+			chapter_text_string = str(chapter_text).replace(
+				'style=" padding: 0.00mm 0.00mm 0.00mm 0.00mm;"',
+				'style=" line-height: 1.5; margin: 8px 0; padding: 4px 0;"'
+			)
 			chapter_text = BeautifulSoup(chapter_text_string, "lxml")
-			epub_chapter = epub.EpubHtml(title=chapter_name, file_name=f'{chapter_name}.xhtml', lang='en')
+			epub_chapter = epub.EpubHtml(
+				title=chapter_name,
+				file_name=f'{MediaMinerScraper.clean_filename(chapter_name)}.xhtml',
+				lang='en'
+			)
 			epub_chapter.content = f"""
 				<html>
 					<head>
@@ -113,6 +124,10 @@ class MediaMinerScraper:
 			"""
 			self.BOOK.add_item(epub_chapter)
 			self.EPUB_CHAPTERS.append(epub_chapter)
+
+	@staticmethod
+	def clean_filename(filename: str) -> str:
+		return ''.join([c for c in filename if c not in " %:/,.\\[]<>*?"])
 
 	def makeEpub(self):
 		self.BOOK.set_identifier(self.URL)
